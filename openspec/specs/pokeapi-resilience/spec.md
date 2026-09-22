@@ -1,10 +1,9 @@
-# Spec Delta
+# pokeapi-resilience Specification
 
 ## Purpose
-
 Defines the timeout, retry, and error-classification contract that governs every request the system makes to the public PokéAPI, so callers can react predictably to definitive and transient failures.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Request Timeout
 Every request to the PokéAPI SHALL be aborted if no response is received within 8 seconds, and the abort SHALL surface as a network error.
@@ -14,11 +13,15 @@ Every request to the PokéAPI SHALL be aborted if no response is received within
 - **THEN** the request is aborted and a network error is surfaced to the caller
 
 ### Requirement: Definitive Failure Handling
-A response with status `404` SHALL be treated as a definitive failure: it SHALL NOT be retried and SHALL surface as a not-found error.
+A response with status `404`, or any other non-successful status that is not transient (any `4xx` other than `429`), SHALL be treated as a definitive failure: it SHALL NOT be retried and SHALL surface as a not-found error. A definitive failure SHALL NOT be reported as a network error.
 
 #### Scenario: Resource does not exist
 - **WHEN** the PokéAPI responds with status `404`
 - **THEN** no retry is attempted and a not-found error is surfaced to the caller
+
+#### Scenario: Request is rejected with another client error
+- **WHEN** the PokéAPI responds with a `4xx` status other than `404` or `429`
+- **THEN** no retry is attempted and a not-found error is surfaced to the caller, not a network error
 
 ### Requirement: Transient Failure Retries
 A response with status `429` or any `5xx` status SHALL be treated as transient and SHALL be retried up to 2 times, using exponential backoff with jitter of approximately 1 second before the first retry and 2 seconds before the second retry.

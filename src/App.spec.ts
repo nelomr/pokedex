@@ -140,6 +140,73 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="catalog-error"]').exists()).toBe(false);
     vi.useRealTimers();
   });
+
+  describe("detail modal wiring", () => {
+    async function mountWithOnePokemon() {
+      vi.mocked(httpGet).mockResolvedValueOnce({
+        results: [
+          { name: "bulbasaur", url: "https://pokeapi.co/api/v2/pokemon/1/" },
+        ],
+      });
+      const wrapper = mount(App, { attachTo: document.body });
+      await flushAsync();
+      return wrapper;
+    }
+
+    it("does not render the detail modal initially", async () => {
+      const wrapper = await mountWithOnePokemon();
+      expect(wrapper.find("[role='dialog']").exists()).toBe(false);
+      wrapper.unmount();
+    });
+
+    it("opens the detail modal when a card emits select", async () => {
+      vi.mocked(httpGet).mockReturnValue(new Promise(() => {}));
+      const wrapper = await mountWithOnePokemon();
+
+      const card = wrapper.find("[role='button']");
+      await card.trigger("click");
+      await flushAsync();
+
+      expect(wrapper.find("[role='dialog']").exists()).toBe(true);
+      wrapper.unmount();
+    });
+
+    it("closes the detail modal and restores focus to the originating card on close", async () => {
+      vi.mocked(httpGet).mockReturnValue(new Promise(() => {}));
+      const wrapper = await mountWithOnePokemon();
+
+      const card = wrapper.get("[role='button']");
+      (card.element as HTMLElement).focus();
+      await card.trigger("click");
+      await flushAsync();
+
+      await wrapper.get("[data-testid='modal-close']").trigger("click");
+      await flushAsync();
+
+      expect(wrapper.find("[role='dialog']").exists()).toBe(false);
+      expect(document.activeElement).toBe(card.element);
+      wrapper.unmount();
+    });
+
+    it("marks the background content inert while the modal is open, and reachable again after close", async () => {
+      vi.mocked(httpGet).mockReturnValue(new Promise(() => {}));
+      const wrapper = await mountWithOnePokemon();
+      const content = wrapper.get("[data-testid='app-content']").element;
+
+      expect(content.hasAttribute("inert")).toBe(false);
+
+      await wrapper.find("[role='button']").trigger("click");
+      await flushAsync();
+
+      expect(content.hasAttribute("inert")).toBe(true);
+
+      await wrapper.get("[data-testid='modal-close']").trigger("click");
+      await flushAsync();
+
+      expect(content.hasAttribute("inert")).toBe(false);
+      wrapper.unmount();
+    });
+  });
 });
 
 async function flushAsync(): Promise<void> {

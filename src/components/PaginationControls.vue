@@ -28,6 +28,7 @@ function handleNext(): void {
       data-testid="prev-page"
       :disabled="props.currentPage <= 1"
       class="rounded bg-slate-700 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-40"
+      :class="{ 'cursor-pointer': props.currentPage > 1 }"
       @click="handlePrev"
     >
       Previous
@@ -40,6 +41,7 @@ function handleNext(): void {
       data-testid="next-page"
       :disabled="props.currentPage >= props.totalPages"
       class="rounded bg-slate-700 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-40"
+      :class="{ 'cursor-pointer': props.currentPage < props.totalPages }"
       @click="handleNext"
     >
       Next

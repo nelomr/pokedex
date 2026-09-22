@@ -38,7 +38,7 @@ Detail state lives in its own Pinia setup store rather than being folded into th
 
 *Alternative considered:* extending `pokemonList.store.ts` with detail fields. Rejected — the catalog store owns one whole-catalog load with a single `status`/`error` pair; detail is N independent per-Pokémon loads, each with its own lifecycle. Merging them would force per-entity status into a store whose contract is a single global status, which is exactly the coupling that makes a failed detail request able to corrupt the catalog view.
 
-*Verified by:* a store test asserting that a rejected detail request leaves the catalog store's `status` at `'success'` while the detail error is exposed per-ID.
+*Verified by:* a store test asserting that a rejected detail request leaves the catalog store's `status` untouched (its initial `'idle'` in the test's fresh Pinia instance, or whatever it already was) with `error` at `null`, while the detail error is exposed per-ID.
 
 ### 2. Identity map keyed by both ID and name
 

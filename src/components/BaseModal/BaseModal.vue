@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { useAccessibleModal } from "../composables/useAccessibleModal";
+import { useAccessibleModal } from "../../composables/useAccessibleModal";
 
 interface Props {
   open: boolean;

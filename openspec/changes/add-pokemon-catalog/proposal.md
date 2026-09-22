@@ -24,7 +24,7 @@ _None._
 
 ## Impact
 
-- New dirs/files: `src/api/httpClient.ts`, `src/api/pokeApi.dto.ts`, `src/domain/pokemon.types.ts`, `src/domain/errors.ts`, `src/services/pokemonMapper.ts`, `src/stores/pokemonList.store.ts`, `src/components/PokemonGrid.vue`, `src/components/PokemonCard.vue`, `src/components/PaginationControls.vue`.
+- New dirs/files: `src/api/httpClient.ts`, `src/api/pokeApi.dto.ts`, `src/domain/pokemon.types.ts`, `src/domain/errors.ts`, `src/services/pokemonMapper.ts`, `src/stores/pokemonList.store.ts`, `src/components/PokemonGrid/PokemonGrid.vue`, `src/components/PokemonCard/PokemonCard.vue`, `src/components/PaginationControls/PaginationControls.vue`.
 - Modified files: `src/main.ts` (Pinia registration), `src/App.vue` (app shell).
 - Dependencies wired: Pinia (already installed, first usage), Tailwind CSS (already installed, first usage).
 - Dependency: none — this is the foundation slice and must be implemented first; changes #2–#4 depend on it.

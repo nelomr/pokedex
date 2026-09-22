@@ -27,3 +27,15 @@ Se permite reconexion mediante un boton si falla. Y los errores del detalle de l
 Si la api tarda demasiado corto la peticion, para que no se quede cargando infinito.
 
 ## Qué has probado con tests
+
+3 niveles:
+
+Lógica Pura y Dominio: Mappers (cálculos de peso/altura, extracción de IDs y null-safety).
+
+Infraestructura y Red: Cliente HTTP (timeouts, reintentos con backoff y 404 directo).
+
+Capa de Aplicación y UI:
+
+Estado: Stores de Pinia (filtros en memoria y caché de detalles).
+
+Contrato de Componente: Accesibilidad mínima (tabindex="0", role="button") y emisión de eventos (select).

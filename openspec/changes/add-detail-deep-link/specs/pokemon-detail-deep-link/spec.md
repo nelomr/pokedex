@@ -107,3 +107,34 @@ Browser Back and Forward SHALL open and close the detail modal by changing the m
 #### Scenario: Listeners are released by a history-driven close
 - **WHEN** the modal is closed by a browser Back navigation
 - **THEN** no document listener added by the modal remains registered
+
+### Requirement: Catalog pagination follows a resolved deep link
+When a detail route resolves, the system SHALL advance the catalog's current page to the page containing that Pokémon in the currently active filtered list. The system SHALL perform this synchronisation only when the Pokémon is present in that filtered list as it stands; when the identifier is invalid, or when the Pokémon is excluded by the active search query or the active type filter, the current page SHALL remain unchanged. The synchronisation SHALL run once per resolution and SHALL NOT pin the current page thereafter. When the catalog list has not finished loading at resolution time, the synchronisation SHALL be deferred until the catalog load succeeds, and SHALL be dropped if the catalog load fails. The synchronisation SHALL NOT alter the search query, the search mode, or the type filter, and SHALL NOT affect the detail modal's own loading or error states.
+
+#### Scenario: Deep link advances to the page holding the Pokémon
+- **WHEN** the application is loaded at a detail URL for a Pokémon that sits on the third page of the currently active filtered list
+- **THEN** the catalog's current page becomes the third page and that Pokémon's card is among the paginated items
+
+#### Scenario: An invalid identifier leaves pagination untouched
+- **WHEN** the application is loaded at a detail URL whose identifier resolves to no Pokémon and the detail request fails with a `NotFoundError`
+- **THEN** the catalog's current page is unchanged
+
+#### Scenario: A Pokémon excluded by the active search query leaves pagination untouched
+- **WHEN** a detail URL resolves for a valid Pokémon while a search query is active that excludes that Pokémon from the filtered list
+- **THEN** the catalog's current page is unchanged and the modal still shows that Pokémon's detail
+
+#### Scenario: A Pokémon excluded by the active type filter leaves pagination untouched
+- **WHEN** a detail URL resolves for a valid Pokémon while a type filter is active that excludes that Pokémon from the filtered list
+- **THEN** the catalog's current page is unchanged and the modal still shows that Pokémon's detail
+
+#### Scenario: Changing a filter after the jump still resets to the first page
+- **WHEN** the catalog's page has been advanced by a resolved deep link and the user then changes the search query or the type filter
+- **THEN** the current page resets to the first page, exactly as it does without a deep link, and is not restored to the deep-linked Pokémon's page
+
+#### Scenario: The sync waits for a catalog still in flight
+- **WHEN** a detail URL resolves while the catalog list request is still in flight
+- **THEN** the current page is unchanged while the catalog is loading, and once the catalog load succeeds the current page becomes the page containing that Pokémon in the filtered list
+
+#### Scenario: A failed catalog load drops the pending sync
+- **WHEN** a detail URL resolves while the catalog list request is in flight and that request then fails
+- **THEN** no pagination change occurs and the modal's own loaded or error state is unaffected

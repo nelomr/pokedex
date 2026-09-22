@@ -371,4 +371,95 @@ describe("pokemonList.store", () => {
       expect(idModeResult).not.toEqual(nameModeResult);
     });
   });
+
+  describe("goToPageOf", () => {
+    it("sets currentPage to the page containing a numeric key matching an entry's id", async () => {
+      vi.mocked(httpGet).mockResolvedValue({ results: makeIndex(45) });
+      const store = usePokemonListStore();
+      await store.initCatalog();
+
+      store.goToPageOf(41);
+
+      expect(store.currentPage).toBe(3);
+    });
+
+    it("sets currentPage to the page containing a lowercase-name key matching an entry's name", async () => {
+      vi.mocked(httpGet).mockResolvedValue({ results: makeIndex(45) });
+      const store = usePokemonListStore();
+      await store.initCatalog();
+
+      store.goToPageOf("pokemon-41");
+
+      expect(store.currentPage).toBe(3);
+    });
+
+    it("leaves currentPage unchanged for a key absent from filteredList", async () => {
+      vi.mocked(httpGet).mockResolvedValue({ results: makeIndex(45) });
+      const store = usePokemonListStore();
+      await store.initCatalog();
+      store.goToPage(2);
+
+      store.goToPageOf(9999);
+
+      expect(store.currentPage).toBe(2);
+    });
+
+    it("is a no-op for a null key", async () => {
+      vi.mocked(httpGet).mockResolvedValue({ results: makeIndex(45) });
+      const store = usePokemonListStore();
+      await store.initCatalog();
+      store.goToPage(2);
+
+      store.goToPageOf(null);
+
+      expect(store.currentPage).toBe(2);
+    });
+
+    it("leaves currentPage unchanged for an entry excluded by an active searchQuery", async () => {
+      vi.mocked(httpGet).mockResolvedValue({ results: makeIndex(45) });
+      const store = usePokemonListStore();
+      await store.initCatalog();
+      store.setSearchQuery("pokemon-1");
+      store.goToPage(1);
+
+      store.goToPageOf(41);
+
+      expect(store.currentPage).toBe(1);
+    });
+
+    it("leaves currentPage unchanged for an entry excluded by an active selectedType", async () => {
+      vi.mocked(httpGet).mockResolvedValue({ results: makeIndex(45) });
+      const store = usePokemonListStore();
+      await store.initCatalog();
+      store.typeIndex.set("fire", new Set([1, 2, 3]));
+      await store.setTypeFilter("fire");
+      store.goToPage(1);
+
+      store.goToPageOf(41);
+
+      expect(store.currentPage).toBe(1);
+    });
+
+    it("does not pin the page: a later filter change still resets currentPage to 1", async () => {
+      vi.mocked(httpGet).mockResolvedValue({ results: makeIndex(45) });
+      const store = usePokemonListStore();
+      await store.initCatalog();
+
+      store.goToPageOf(41);
+      expect(store.currentPage).toBe(3);
+
+      store.setSearchQuery("pokemon");
+      expect(store.currentPage).toBe(1);
+
+      store.goToPageOf(41);
+      expect(store.currentPage).toBe(3);
+      store.setSearchMode("id");
+      expect(store.currentPage).toBe(1);
+
+      store.goToPageOf(41);
+      expect(store.currentPage).toBe(3);
+      void store.setTypeFilter(null);
+      expect(store.currentPage).toBe(1);
+    });
+  });
 });

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { useDebounce } from "../composables/useDebounce";
-import type { SearchMode } from "../domain/pokemon.types";
+import { useDebounce } from "../../composables/useDebounce";
+import type { SearchMode } from "../../domain/pokemon.types";
 
 interface Props {
   searchMode: SearchMode;

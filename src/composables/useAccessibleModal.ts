@@ -1,5 +1,7 @@
 import { onUnmounted, type Ref, watch } from "vue";
 
+const FOCUS_FALLBACK_SELECTOR = '[data-testid="catalog-heading"]';
+
 const FOCUSABLE_SELECTOR = [
   'a[href]:not([tabindex="-1"])',
   "button:not([disabled])",
@@ -28,6 +30,7 @@ export function useAccessibleModal(options: UseAccessibleModalOptions): void {
   let previousBodyOverflow = "";
   let previousBodyPaddingRight = "";
   let isLocked = false;
+  let isAttached = false;
 
   function handleKeydown(event: KeyboardEvent): void {
     if (event.key === "Escape") {
@@ -102,6 +105,7 @@ export function useAccessibleModal(options: UseAccessibleModalOptions): void {
   }
 
   function attach(): void {
+    isAttached = true;
     triggerElement = document.activeElement as HTMLElement | null;
 
     document.addEventListener("keydown", handleKeydown);
@@ -116,27 +120,46 @@ export function useAccessibleModal(options: UseAccessibleModalOptions): void {
     }
   }
 
+  function resolveFocusTarget(): HTMLElement | null {
+    if (
+      triggerElement &&
+      triggerElement !== document.body &&
+      document.contains(triggerElement)
+    ) {
+      return triggerElement;
+    }
+
+    return document.querySelector<HTMLElement>(FOCUS_FALLBACK_SELECTOR);
+  }
+
   function detach(): void {
+    if (!isAttached) {
+      return;
+    }
+    isAttached = false;
+
     document.removeEventListener("keydown", handleKeydown);
     document.removeEventListener("mousedown", handleMousedown);
 
     unlockScroll();
 
-    triggerElement?.focus();
+    resolveFocusTarget()?.focus();
     triggerElement = null;
   }
 
-  watch(isOpen, (open, wasOpen) => {
-    if (open && !wasOpen) {
-      attach();
-    } else if (!open && wasOpen) {
-      detach();
-    }
-  });
+  watch(
+    isOpen,
+    (open, wasOpen) => {
+      if (open && !wasOpen) {
+        attach();
+      } else if (!open && wasOpen) {
+        detach();
+      }
+    },
+    { flush: "post" },
+  );
 
   onUnmounted(() => {
-    document.removeEventListener("keydown", handleKeydown);
-    document.removeEventListener("mousedown", handleMousedown);
-    unlockScroll();
+    detach();
   });
 }

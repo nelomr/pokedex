@@ -23,7 +23,7 @@ _None._
 
 ## Impact
 
-- New files: `src/stores/pokemonDetail.store.ts`, `src/composables/useAccessibleModal.ts`, `src/components/BaseModal.vue`, `src/components/PokemonDetailModal.vue`, `src/components/PokemonDetailSkeleton.vue`.
-- Modified files: `src/services/pokemonMapper.ts` (unit conversion, null/NaN safety), `src/components/PokemonCard.vue` (click opens modal).
+- New files: `src/stores/pokemonDetail.store.ts`, `src/composables/useAccessibleModal.ts`, `src/components/BaseModal/BaseModal.vue`, `src/components/PokemonDetailModal/PokemonDetailModal.vue`, `src/components/PokemonDetailSkeleton/PokemonDetailSkeleton.vue`.
+- Modified files: `src/services/pokemonMapper.ts` (unit conversion, null/NaN safety), `src/components/PokemonCard/PokemonCard.vue` (click opens modal).
 - Dependencies wired: none new.
 - Dependency: requires `add-pokemon-catalog` to be implemented first (needs the catalog grid/cards as the trigger point and the shared mapper/error infrastructure). Independent of `add-search-and-type-filter`.

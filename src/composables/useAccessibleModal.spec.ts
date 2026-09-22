@@ -144,6 +144,47 @@ describe("useAccessibleModal", () => {
     }
   });
 
+  describe("focus fallback with no usable trigger", () => {
+    function setupHeading(): HTMLElement {
+      const heading = document.createElement("h1");
+      heading.setAttribute("data-testid", "catalog-heading");
+      heading.setAttribute("tabindex", "-1");
+      document.body.appendChild(heading);
+      return heading;
+    }
+
+    it("falls back to the catalog heading when nothing was focused at open time", async () => {
+      const heading = setupHeading();
+      (document.activeElement as HTMLElement | null)?.blur();
+      document.body.focus?.();
+
+      mountModal();
+      isOpen.value = true;
+      await nextTick();
+
+      isOpen.value = false;
+      await nextTick();
+
+      expect(document.activeElement).toBe(heading);
+    });
+
+    it("falls back to the catalog heading when the trigger is no longer in the document", async () => {
+      const heading = setupHeading();
+      trigger.focus();
+
+      mountModal();
+      isOpen.value = true;
+      await nextTick();
+
+      trigger.remove();
+
+      isOpen.value = false;
+      await nextTick();
+
+      expect(document.activeElement).toBe(heading);
+    });
+  });
+
   describe("scroll lock", () => {
     beforeEach(() => {
       document.body.style.overflow = "";

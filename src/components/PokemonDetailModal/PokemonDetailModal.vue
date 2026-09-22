@@ -1,40 +1,44 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import {
   POKEMON_STAT_COUNT,
-  type PokemonCardItem,
   type PokemonDetail,
-} from "../domain/pokemon.types";
-import { usePokemonDetailStore } from "../stores/pokemonDetail.store";
-import BaseModal from "./BaseModal.vue";
-import PokemonDetailSkeleton from "./PokemonDetailSkeleton.vue";
-import placeholderSrc from "../assets/pokemon-placeholder.svg";
+} from "../../domain/pokemon.types";
+import { ROUTE_NAMES } from "../../router/routeNames";
+import { normalizeDetailKey } from "../../services/detailRouteKey";
+import { usePokemonDetailStore } from "../../stores/pokemonDetail.store";
+import { usePokemonListStore } from "../../stores/pokemonList.store";
+import BaseModal from "../BaseModal/BaseModal.vue";
+import PokemonDetailSkeleton from "../PokemonDetailSkeleton/PokemonDetailSkeleton.vue";
+import placeholderSrc from "../../assets/pokemon-placeholder.svg";
 
 interface Props {
-  open: boolean;
-  item: PokemonCardItem;
-}
-
-interface Emits {
-  (event: "close"): void;
+  idOrName: string;
 }
 
 const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
 
+const router = useRouter();
 const detailStore = usePokemonDetailStore();
+const listStore = usePokemonListStore();
+
+const key = computed(() => normalizeDetailKey(props.idOrName));
+const pendingPageSyncKey = ref<string | number | null>(null);
 
 const titleId = computed(
-  () => `pokemon-detail-title-${props.item.id ?? props.item.name}`,
+  () => `pokemon-detail-title-${key.value ?? props.idOrName}`,
 );
 
-const key = computed(() => props.item.id ?? props.item.name);
 const detail = computed<PokemonDetail | undefined>(() =>
-  detailStore.cache.get(key.value),
+  key.value === null ? undefined : detailStore.cache.get(key.value),
 );
-const requestError = computed(() => detailStore.errors.get(key.value));
+const requestError = computed(() =>
+  key.value === null ? undefined : detailStore.errors.get(key.value),
+);
 const isLoading = computed(
   () =>
+    key.value !== null &&
     !detail.value &&
     !requestError.value &&
     detailStore.loadingIds.has(key.value),
@@ -52,22 +56,58 @@ function handleArtworkError(): void {
 }
 
 function requestDetail(): void {
+  if (key.value === null) {
+    return;
+  }
   void detailStore.getPokemonDetail(key.value);
 }
 
+function syncPageFor(syncKey: string | number | null): void {
+  if (syncKey === null) {
+    return;
+  }
+
+  if (listStore.status === "success") {
+    listStore.goToPageOf(syncKey);
+    return;
+  }
+
+  if (listStore.status === "error") {
+    return;
+  }
+
+  pendingPageSyncKey.value = syncKey;
+}
+
 watch(
-  () => props.open,
-  (open) => {
-    if (open) {
-      hasArtworkError.value = false;
-      requestDetail();
-    }
+  key,
+  (newKey) => {
+    hasArtworkError.value = false;
+    requestDetail();
+    pendingPageSyncKey.value = null;
+    syncPageFor(newKey);
   },
   { immediate: true },
 );
 
+watch(
+  () => listStore.status,
+  (newStatus) => {
+    if (pendingPageSyncKey.value === null) {
+      return;
+    }
+
+    if (newStatus === "success") {
+      listStore.goToPageOf(pendingPageSyncKey.value);
+      pendingPageSyncKey.value = null;
+    } else if (newStatus === "error") {
+      pendingPageSyncKey.value = null;
+    }
+  },
+);
+
 function handleClose(): void {
-  emit("close");
+  void router.push({ name: ROUTE_NAMES.pokemonCatalog });
 }
 
 function retry(): void {
@@ -76,10 +116,10 @@ function retry(): void {
 </script>
 
 <template>
-  <BaseModal :open="open" :title-id="titleId" @close="handleClose">
+  <BaseModal :open="true" :title-id="titleId" @close="handleClose">
     <template #title>
       <h2 :id="titleId" class="text-xl font-bold capitalize">
-        {{ detail?.name ?? item.name }}
+        {{ detail?.name ?? idOrName }}
       </h2>
     </template>
 
@@ -94,7 +134,7 @@ function retry(): void {
       <button
         type="button"
         data-testid="detail-retry"
-        class="rounded bg-slate-700 px-3 py-1"
+        class="rounded bg-slate-700 px-3 py-1 cursor-pointer"
         @click="retry"
       >
         Retry

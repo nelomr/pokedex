@@ -1,23 +1,38 @@
-import { mount } from "@vue/test-utils";
+import { mount as mountComponent } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import App from "./App.vue";
-import { NetworkError, NotFoundError, RateLimitError } from "./domain/errors";
-import { httpGet } from "./api/httpClient";
+import { createMemoryHistory, createRouter, type Router } from "vue-router";
+import PokemonCatalogView from "./PokemonCatalogView.vue";
+import { NetworkError, NotFoundError, RateLimitError } from "../domain/errors";
+import { httpGet } from "../api/httpClient";
+import { routes } from "../router";
 
-vi.mock("./api/httpClient", () => ({
+vi.mock("../api/httpClient", () => ({
   httpGet: vi.fn(),
 }));
 
-describe("App", () => {
+let router: Router;
+
+function mount(
+  component: typeof PokemonCatalogView,
+  options?: Parameters<typeof mountComponent>[1],
+) {
+  return mountComponent(component, {
+    ...options,
+    global: { plugins: [router], ...options?.global },
+  });
+}
+
+describe("PokemonCatalogView", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.mocked(httpGet).mockReset();
+    router = createRouter({ history: createMemoryHistory(), routes });
   });
 
   it("shows a distinct loading state while the catalog has not finished loading", async () => {
     vi.mocked(httpGet).mockReturnValue(new Promise(() => {}));
-    const wrapper = mount(App);
+    const wrapper = mount(PokemonCatalogView);
     await flushAsync();
 
     expect(wrapper.find('[data-testid="catalog-loading"]').exists()).toBe(true);
@@ -30,7 +45,7 @@ describe("App", () => {
 
   it("shows a distinct error state with a retry action when the catalog fails to load", async () => {
     vi.mocked(httpGet).mockRejectedValue(new NetworkError());
-    const wrapper = mount(App);
+    const wrapper = mount(PokemonCatalogView);
     await flushAsync();
 
     expect(wrapper.find('[data-testid="catalog-error"]').exists()).toBe(true);
@@ -45,7 +60,7 @@ describe("App", () => {
 
   it("shows a distinct empty state when the catalog loads with no entries", async () => {
     vi.mocked(httpGet).mockResolvedValue({ results: [] });
-    const wrapper = mount(App);
+    const wrapper = mount(PokemonCatalogView);
     await flushAsync();
 
     expect(wrapper.find('[data-testid="catalog-empty"]').exists()).toBe(true);
@@ -61,7 +76,7 @@ describe("App", () => {
         { name: "bulbasaur", url: "https://pokeapi.co/api/v2/pokemon/1/" },
       ],
     });
-    const wrapper = mount(App);
+    const wrapper = mount(PokemonCatalogView);
     await flushAsync();
 
     expect(wrapper.find('[data-testid="catalog-populated"]').exists()).toBe(
@@ -73,7 +88,7 @@ describe("App", () => {
 
   it("shows a message matching the failure class for a rate-limit error", async () => {
     vi.mocked(httpGet).mockRejectedValue(new RateLimitError());
-    const wrapper = mount(App);
+    const wrapper = mount(PokemonCatalogView);
     await flushAsync();
 
     expect(wrapper.find('[data-testid="catalog-error"]').text()).toContain(
@@ -83,7 +98,7 @@ describe("App", () => {
 
   it("shows a message matching the failure class for a not-found error", async () => {
     vi.mocked(httpGet).mockRejectedValue(new NotFoundError());
-    const wrapper = mount(App);
+    const wrapper = mount(PokemonCatalogView);
     await flushAsync();
 
     expect(wrapper.find('[data-testid="catalog-error"]').text()).toContain(
@@ -93,7 +108,7 @@ describe("App", () => {
 
   it("shows a message matching the failure class for a network error", async () => {
     vi.mocked(httpGet).mockRejectedValue(new NetworkError());
-    const wrapper = mount(App);
+    const wrapper = mount(PokemonCatalogView);
     await flushAsync();
 
     expect(wrapper.find('[data-testid="catalog-error"]').text()).toContain(
@@ -103,7 +118,7 @@ describe("App", () => {
 
   it("retries the load when the retry action is triggered", async () => {
     vi.mocked(httpGet).mockRejectedValueOnce(new NetworkError());
-    const wrapper = mount(App);
+    const wrapper = mount(PokemonCatalogView);
     await flushAsync();
 
     vi.mocked(httpGet).mockResolvedValueOnce({ results: [] });
@@ -121,7 +136,7 @@ describe("App", () => {
         { name: "bulbasaur", url: "https://pokeapi.co/api/v2/pokemon/1/" },
       ],
     });
-    const wrapper = mount(App);
+    const wrapper = mount(PokemonCatalogView);
     await flushAsync();
 
     await wrapper
@@ -141,72 +156,8 @@ describe("App", () => {
     vi.useRealTimers();
   });
 
-  describe("detail modal wiring", () => {
-    async function mountWithOnePokemon() {
-      vi.mocked(httpGet).mockResolvedValueOnce({
-        results: [
-          { name: "bulbasaur", url: "https://pokeapi.co/api/v2/pokemon/1/" },
-        ],
-      });
-      const wrapper = mount(App, { attachTo: document.body });
-      await flushAsync();
-      return wrapper;
-    }
-
-    it("does not render the detail modal initially", async () => {
-      const wrapper = await mountWithOnePokemon();
-      expect(wrapper.find("[role='dialog']").exists()).toBe(false);
-      wrapper.unmount();
-    });
-
-    it("opens the detail modal when a card emits select", async () => {
-      vi.mocked(httpGet).mockReturnValue(new Promise(() => {}));
-      const wrapper = await mountWithOnePokemon();
-
-      const card = wrapper.find("[role='button']");
-      await card.trigger("click");
-      await flushAsync();
-
-      expect(wrapper.find("[role='dialog']").exists()).toBe(true);
-      wrapper.unmount();
-    });
-
-    it("closes the detail modal and restores focus to the originating card on close", async () => {
-      vi.mocked(httpGet).mockReturnValue(new Promise(() => {}));
-      const wrapper = await mountWithOnePokemon();
-
-      const card = wrapper.get("[role='button']");
-      (card.element as HTMLElement).focus();
-      await card.trigger("click");
-      await flushAsync();
-
-      await wrapper.get("[data-testid='modal-close']").trigger("click");
-      await flushAsync();
-
-      expect(wrapper.find("[role='dialog']").exists()).toBe(false);
-      expect(document.activeElement).toBe(card.element);
-      wrapper.unmount();
-    });
-
-    it("marks the background content inert while the modal is open, and reachable again after close", async () => {
-      vi.mocked(httpGet).mockReturnValue(new Promise(() => {}));
-      const wrapper = await mountWithOnePokemon();
-      const content = wrapper.get("[data-testid='app-content']").element;
-
-      expect(content.hasAttribute("inert")).toBe(false);
-
-      await wrapper.find("[role='button']").trigger("click");
-      await flushAsync();
-
-      expect(content.hasAttribute("inert")).toBe(true);
-
-      await wrapper.get("[data-testid='modal-close']").trigger("click");
-      await flushAsync();
-
-      expect(content.hasAttribute("inert")).toBe(false);
-      wrapper.unmount();
-    });
-  });
+  // Detail-modal open/close wiring is now route-driven and is covered by
+  // src/views/PokemonDetailRoute.spec.ts, which mounts the real router.
 });
 
 async function flushAsync(): Promise<void> {

@@ -105,6 +105,22 @@ export const usePokemonListStore = defineStore("pokemonList", () => {
     currentPage.value = Math.min(Math.max(targetPage, 1), totalPages.value);
   }
 
+  function goToPageOf(key: string | number | null): void {
+    if (key === null) {
+      return;
+    }
+
+    const index = filteredList.value.findIndex((item) =>
+      typeof key === "number" ? item.id === key : item.name === key,
+    );
+
+    if (index === -1) {
+      return;
+    }
+
+    goToPage(Math.floor(index / pageSize.value) + 1);
+  }
+
   function setSearchQuery(query: string): void {
     searchQuery.value = query;
     currentPage.value = 1;
@@ -187,6 +203,7 @@ export const usePokemonListStore = defineStore("pokemonList", () => {
     hasNextPage,
     hasPrevPage,
     goToPage,
+    goToPageOf,
     setSearchQuery,
     setSearchMode,
     setTypeFilter,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { POKEMON_STAT_COUNT } from "../domain/pokemon.types";
+import { POKEMON_STAT_COUNT } from "../../domain/pokemon.types";
 
 interface Props {
   statCount?: number;

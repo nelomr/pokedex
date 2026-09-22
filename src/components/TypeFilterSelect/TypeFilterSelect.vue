@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { POKEMON_TYPES } from "../domain/pokemon.types";
+import { POKEMON_TYPES } from "../../domain/pokemon.types";
 
 interface Props {
   modelValue: string | null;

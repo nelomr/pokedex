@@ -1,23 +1,20 @@
 import { createPinia, setActivePinia } from "pinia";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { httpGet } from "../api/httpClient";
-import placeholderSrc from "../assets/pokemon-placeholder.svg";
-import { NotFoundError } from "../domain/errors";
-import type { PokemonCardItem } from "../domain/pokemon.types";
-import { usePokemonDetailStore } from "../stores/pokemonDetail.store";
+import { createMemoryHistory, createRouter, type Router } from "vue-router";
+import { httpGet } from "../../api/httpClient";
+import placeholderSrc from "../../assets/pokemon-placeholder.svg";
+import { NotFoundError } from "../../domain/errors";
+import { routes } from "../../router";
+import { usePokemonDetailStore } from "../../stores/pokemonDetail.store";
 import PokemonDetailModal from "./PokemonDetailModal.vue";
-import PokemonDetailSkeleton from "./PokemonDetailSkeleton.vue";
+import PokemonDetailSkeleton from "../PokemonDetailSkeleton/PokemonDetailSkeleton.vue";
 
-vi.mock("../api/httpClient", () => ({
+vi.mock("../../api/httpClient", () => ({
   httpGet: vi.fn(),
 }));
 
-const item: PokemonCardItem = {
-  id: 1,
-  name: "bulbasaur",
-  spriteUrl: "https://example.com/1.png",
-};
+let router: Router;
 
 function makeDetailDto() {
   return {
@@ -44,14 +41,16 @@ function makeDetailDto() {
 function mountModal() {
   setActivePinia(createPinia());
   return mount(PokemonDetailModal, {
-    props: { open: true, item },
+    props: { idOrName: "1" },
     attachTo: document.body,
+    global: { plugins: [router] },
   });
 }
 
 describe("PokemonDetailModal", () => {
   beforeEach(() => {
     vi.mocked(httpGet).mockReset();
+    router = createRouter({ history: createMemoryHistory(), routes });
   });
 
   it("renders the skeleton while loading and not once loaded", async () => {
@@ -108,8 +107,9 @@ describe("PokemonDetailModal", () => {
     await detailStore.getPokemonDetail(1);
 
     const wrapper = mount(PokemonDetailModal, {
-      props: { open: true, item },
+      props: { idOrName: "1" },
       attachTo: document.body,
+      global: { plugins: [router] },
     });
     await wrapper.vm.$nextTick();
 

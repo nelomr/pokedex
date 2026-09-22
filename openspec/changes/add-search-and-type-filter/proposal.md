@@ -23,7 +23,7 @@ Browsing 1000+ Pokémon by pagination alone is impractical; users need to narrow
 ## Impact
 
 - No new files are needed for the search-mode addition: the mode selector lives inside `SearchBar.vue`.
-- New files: `src/composables/useDebounce.ts`, `src/components/SearchBar.vue`, `src/components/TypeFilterSelect.vue`.
+- New files: `src/composables/useDebounce.ts`, `src/components/SearchBar/SearchBar.vue`, `src/components/TypeFilterSelect/TypeFilterSelect.vue`.
 - Modified files: `src/stores/pokemonList.store.ts` (new state, computed, actions).
 - Dependencies wired: none new.
 - Dependency: requires `add-pokemon-catalog` to be implemented first — it builds directly on `rawCatalogIndex`, `pokemonList.store.ts`, and the existing pagination/grid components.

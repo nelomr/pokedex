@@ -1,9 +1,9 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
-import { httpGet } from "../api/httpClient";
+import { httpGet } from "../../api/httpClient";
 import TypeFilterSelect from "./TypeFilterSelect.vue";
 
-vi.mock("../api/httpClient", () => ({
+vi.mock("../../api/httpClient", () => ({
   httpGet: vi.fn(),
 }));
 

@@ -372,6 +372,36 @@ describe("pokemonList.store", () => {
     });
   });
 
+  describe("retryCatalog", () => {
+    it("moves status to loading and issues a new catalog request from 'error'", async () => {
+      vi.mocked(httpGet).mockRejectedValueOnce(new NetworkError());
+      const store = usePokemonListStore();
+      await store.initCatalog();
+      expect(store.status).toBe("error");
+
+      vi.mocked(httpGet).mockResolvedValueOnce({ results: makeIndex(5) });
+      const retryPromise = store.retryCatalog();
+
+      expect(store.status).toBe("loading");
+      await retryPromise;
+
+      expect(httpGet).toHaveBeenCalledTimes(2);
+      expect(store.status).toBe("success");
+    });
+
+    it("issues no request and keeps 'success' when retried from 'success'", async () => {
+      vi.mocked(httpGet).mockResolvedValueOnce({ results: makeIndex(5) });
+      const store = usePokemonListStore();
+      await store.initCatalog();
+      expect(store.status).toBe("success");
+
+      await store.retryCatalog();
+
+      expect(httpGet).toHaveBeenCalledTimes(1);
+      expect(store.status).toBe("success");
+    });
+  });
+
   describe("goToPageOf", () => {
     it("sets currentPage to the page containing a numeric key matching an entry's id", async () => {
       vi.mocked(httpGet).mockResolvedValue({ results: makeIndex(45) });

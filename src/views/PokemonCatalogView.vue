@@ -2,13 +2,20 @@
 import { computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import {
-  PaginationControls,
-  PokemonGrid,
+  BaseEmptyState,
+  CatalogErrorState,
+  CatalogLoadingState,
+  CatalogPopulatedState,
+  CatalogStateRenderer,
   SearchBar,
   TypeFilterSelect,
 } from "../components";
+import { defineStateEntry } from "../components";
+import type { StateEntry } from "../components";
 import { ROUTE_NAMES } from "../router/routeNames";
 import { usePokemonListStore } from "../stores/pokemonList.store";
+import { resolveCatalogViewState } from "./catalogViewState";
+import type { CatalogViewState } from "./catalogViewState";
 
 const store = usePokemonListStore();
 const route = useRoute();
@@ -20,16 +27,52 @@ const typeFilterErrorMessage = computed(
   () => store.typeFilterError?.message ?? "",
 );
 
-const isNoResults = computed(
-  () =>
-    store.status === "success" &&
-    store.rawCatalogIndex.length > 0 &&
-    store.filteredList.length === 0,
+const catalogViewState = computed<CatalogViewState>(() =>
+  resolveCatalogViewState({
+    status: store.status,
+    totalCount: store.rawCatalogIndex.length,
+    filteredCount: store.filteredList.length,
+  }),
+);
+
+const loadingEntry = defineStateEntry(CatalogLoadingState, {});
+
+const stateEntries = computed<Record<CatalogViewState, StateEntry>>(() => ({
+  idle: loadingEntry,
+  loading: loadingEntry,
+  error: defineStateEntry(
+    CatalogErrorState,
+    { message: errorMessage.value },
+    { retry },
+  ),
+  empty: defineStateEntry(BaseEmptyState, {
+    message: "No Pokémon found.",
+    testId: "catalog-empty",
+  }),
+  noResults: defineStateEntry(BaseEmptyState, {
+    message: "No Pokémon match your search or filters.",
+    testId: "catalog-no-results",
+  }),
+  populated: defineStateEntry(
+    CatalogPopulatedState,
+    {
+      items: store.paginatedItems,
+      currentPage: store.currentPage,
+      totalPages: store.totalPages,
+    },
+    {
+      prev: () => store.goToPage(store.currentPage - 1),
+      next: () => store.goToPage(store.currentPage + 1),
+    },
+  ),
+}));
+
+const currentStateEntry = computed<StateEntry>(
+  () => stateEntries.value[catalogViewState.value],
 );
 
 function retry(): void {
-  store.status = "idle";
-  void store.initCatalog();
+  void store.retryCatalog();
 }
 
 function handleQueryChange(query: string): void {
@@ -80,56 +123,7 @@ onMounted(() => {
         {{ typeFilterErrorMessage }}
       </p>
 
-      <p
-        v-if="store.status === 'loading'"
-        data-testid="catalog-loading"
-        class="p-4"
-      >
-        Loading Pokémon…
-      </p>
-
-      <div
-        v-else-if="store.status === 'error'"
-        data-testid="catalog-error"
-        class="p-4"
-      >
-        <p>{{ errorMessage }}</p>
-        <button
-          type="button"
-          data-testid="catalog-retry"
-          class="mt-2 rounded bg-slate-700 px-3 py-1 cursor-pointer"
-          @click="retry"
-        >
-          Retry
-        </button>
-      </div>
-
-      <p
-        v-else-if="
-          store.status === 'success' && store.rawCatalogIndex.length === 0
-        "
-        data-testid="catalog-empty"
-        class="p-4"
-      >
-        No Pokémon found.
-      </p>
-
-      <p v-else-if="isNoResults" data-testid="catalog-no-results" class="p-4">
-        No Pokémon match your search or filters.
-      </p>
-
-      <div
-        v-else-if="store.status === 'success'"
-        data-testid="catalog-populated"
-      >
-        <PokemonGrid :items="store.paginatedItems" />
-        <PaginationControls
-          :current-page="store.currentPage"
-          :total-pages="store.totalPages"
-          @prev="store.goToPage(store.currentPage - 1)"
-          @next="store.goToPage(store.currentPage + 1)"
-        />
-      </div>
+      <CatalogStateRenderer :entry="currentStateEntry" />
     </div>
 
     <router-view />

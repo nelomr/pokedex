@@ -6,6 +6,7 @@ import PokemonCatalogView from "./PokemonCatalogView.vue";
 import { NetworkError, NotFoundError, RateLimitError } from "../domain/errors";
 import { httpGet } from "../api/httpClient";
 import { routes } from "../router";
+import { usePokemonListStore } from "../stores/pokemonList.store";
 
 vi.mock("../api/httpClient", () => ({
   httpGet: vi.fn(),
@@ -28,6 +29,16 @@ describe("PokemonCatalogView", () => {
     setActivePinia(createPinia());
     vi.mocked(httpGet).mockReset();
     router = createRouter({ history: createMemoryHistory(), routes });
+  });
+
+  it("shows the loading state for the idle catalog before the first load starts", async () => {
+    const store = usePokemonListStore();
+    vi.spyOn(store, "initCatalog").mockResolvedValue();
+    const wrapper = mount(PokemonCatalogView);
+    await flushAsync();
+
+    expect(store.status).toBe("idle");
+    expect(wrapper.find('[data-testid="catalog-loading"]').exists()).toBe(true);
   });
 
   it("shows a distinct loading state while the catalog has not finished loading", async () => {

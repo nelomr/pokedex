@@ -185,6 +185,16 @@ export const usePokemonListStore = defineStore("pokemonList", () => {
     }
   }
 
+  async function retryCatalog(): Promise<void> {
+    if (status.value !== "error") {
+      return;
+    }
+
+    status.value = "idle";
+    error.value = null;
+    await initCatalog();
+  }
+
   return {
     rawCatalogIndex,
     currentPage,
@@ -208,5 +218,6 @@ export const usePokemonListStore = defineStore("pokemonList", () => {
     setSearchMode,
     setTypeFilter,
     initCatalog,
+    retryCatalog,
   };
 });

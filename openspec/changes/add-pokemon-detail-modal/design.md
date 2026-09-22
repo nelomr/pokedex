@@ -20,13 +20,14 @@ Constraints that shape the approach:
 - Correct SI unit conversion and null-safety at the mapper boundary, so no component ever renders `NaN`.
 - Detail-scoped failures that leave the catalog fully browsable.
 - Reusable `BaseModal.vue` / `useAccessibleModal.ts` primitives that the later deep-link change can drive without rewriting.
+- A content-shaped loading skeleton that keeps the modal's dimensions stable from open to loaded, so opening a Pokémon never produces a visible reflow.
 
 **Non-Goals:**
 
 - URL deep linking, `vue-router` wiring, or any route-driven open/close — deferred to `add-detail-deep-link`. In this slice the modal is opened by local component state only.
 - Evolution chains, moves, held items, species flavour text, or any second endpoint beyond `GET /pokemon/{idOrName}`.
 - Persistence of the cache beyond the session (no `localStorage`).
-- Animated transitions or open/close motion design.
+- Animated transitions or open/close motion design (the skeleton's shimmer is the only animation in scope).
 - Prefetching detail data for visible cards.
 
 ## Decisions
@@ -95,6 +96,16 @@ On open, the composable measures `window.innerWidth - document.documentElement.c
 
 *Verified by:* a component test asserting `PokemonCard.vue` emits `select` with its item on click and on Enter/Space, without referencing any store.
 
+### 9. A content-shaped `PokemonDetailSkeleton.vue`, not a spinner
+
+The loading state renders placeholder blocks laid out in the same grid as the loaded detail — artwork square, title bar, a row of type badges, one bar per stat — inside a container marked `aria-busy="true"` with the blocks themselves `aria-hidden`. The shimmer is a CSS animation disabled under `@media (prefers-reduced-motion: reduce)`.
+
+*Alternative considered:* a centred spinner, which is what the loading state would otherwise be. Rejected on two counts. First, a spinner occupies a different footprint than the loaded content, so the modal visibly resizes the instant data arrives — the same layout-shift problem decision 5 already solves for the page behind the modal, reintroduced inside it. Second, a spinner communicates only "something is happening", while a content-shaped skeleton also communicates *what* is coming, which is the whole reason the pattern exists.
+
+*Alternative considered:* reusing the skeleton for the error state too. Rejected — a skeleton signals "content is arriving", which is precisely false once the request has failed; the error state must replace it outright, not decorate it.
+
+*Verified by:* a component test asserting the skeleton renders for the loading state and is absent in both the loaded and error states, that its container carries `aria-busy="true"` while its placeholder blocks are `aria-hidden`, and that the number of stat placeholder rows matches the number of stat rows the loaded state renders.
+
 ## Risks / Trade-offs
 
 - **[The hand-rolled focus trap may miss focusable-element edge cases a library handles — `<details>`, shadow DOM, elements hidden by CSS]** → The selector covers the standard interactive set (`a[href]`, `button`, `input`, `select`, `textarea`, `[tabindex]:not([tabindex="-1"])`) and filters out disabled and `hidden` elements; the modal's own content is fully controlled by this change, so the exotic cases are not reachable here. If a future dialog needs them, decision 4 keeps the swap to a library confined to one file.
@@ -102,3 +113,5 @@ On open, the composable measures `window.innerWidth - document.documentElement.c
 - **[Double-keying the cache stores two `Map` entries per Pokémon]** → Bounded by the number of Pokémon a user actually opens in one session — tens, not thousands — and buys O(1) lookup on both access paths (decision 2).
 - **[Body scroll lock via direct style mutation conflicts if two modals ever open at once]** → Out of scope here: this slice opens exactly one modal, driven by a single `selectedPokemon`. A nested-dialog case would need lock reference counting, which the composable's single ownership point makes straightforward to add later.
 - **[Opening the modal is a cold network request, so the first paint is always a loading state]** → Accepted deliberately: prefetching detail for every visible card would issue 20 requests per page against a rate-limited API to serve a modal the user may never open, which is exactly the trade `add-search-and-type-filter` already rejected for type indices.
+- **[A skeleton that does not match the loaded layout is worse than a spinner — it promises a shape it then fails to deliver]** → The stat placeholder count is asserted against the loaded state's stat row count in the same test file, so the two drifting apart fails the suite rather than shipping as a flicker.
+- **[On a fast connection or a cache hit the skeleton could flash for a few frames]** → A cache hit renders the loaded state directly and never enters the loading state at all (decision 2, and its own spec scenario). The remaining cold-request case is a genuine network wait, which is exactly what the skeleton is for; a minimum-display delay would add latency to hide an artifact that only appears when there is something real to wait for.

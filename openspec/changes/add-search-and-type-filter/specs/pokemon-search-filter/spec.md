@@ -73,3 +73,62 @@ A failure to load data for a selected type SHALL surface a filter-scoped error w
 #### Scenario: Type data fails to load
 - **WHEN** the data required to filter by the selected type fails to load
 - **THEN** a filter-scoped error is shown and the already-loaded catalog remains browsable
+
+### Requirement: Search Mode Selection
+The user SHALL be able to choose whether the search matches by name or by number, and the active mode SHALL be visibly indicated at all times.
+
+#### Scenario: The active mode is indicated
+- **WHEN** the user views the search controls
+- **THEN** the currently active search mode (name or number) is visibly indicated
+
+#### Scenario: The user switches mode
+- **WHEN** the user selects the other search mode
+- **THEN** subsequent searches match according to the newly selected mode
+
+### Requirement: Search by Exact Number
+In number mode, the catalog SHALL be narrowed to the entry whose number matches the entered value exactly.
+
+#### Scenario: An existing number matches exactly one entry
+- **WHEN** the user, in number mode, enters a number that belongs to a catalog entry
+- **THEN** only that entry is shown
+
+#### Scenario: A number no Pokémon carries yields no results
+- **WHEN** the user, in number mode, enters a number that does not belong to any catalog entry
+- **THEN** no entries are shown
+
+#### Scenario: A number that is a prefix of other numbers does not match those other entries
+- **WHEN** the user, in number mode, enters a number that is a prefix of other, longer numbers in the catalog
+- **THEN** only the entry whose number matches exactly is shown, and entries whose number merely starts with the entered digits are excluded
+
+### Requirement: Entries Without a Resolvable Number
+Entries whose number cannot be resolved SHALL be excluded from number-mode results and MUST NOT be treated as any numeric value.
+
+#### Scenario: An unresolvable entry is excluded from a number search
+- **WHEN** the catalog contains an entry whose number cannot be resolved
+- **THEN** that entry is never returned by a number-mode search, for any entered value
+
+#### Scenario: That same entry is still findable by name
+- **WHEN** the user switches to name mode and searches for that entry's name
+- **THEN** the entry is shown as a normal name-search match
+
+### Requirement: Search Mode Change Resets Query and Page
+Changing the search mode SHALL clear the current query and return the user to the first page.
+
+#### Scenario: Switching mode with an active query
+- **WHEN** the user has an active search query and switches search mode
+- **THEN** the search query is cleared and no results are excluded by the previous query
+
+#### Scenario: Switching mode while on a later page
+- **WHEN** the user is viewing a page other than the first and switches search mode
+- **THEN** the displayed page returns to the first page
+
+### Requirement: Mode-Restricted Input
+The search input SHALL accept only values valid for the active mode, rejecting text in number mode.
+
+#### Scenario: Non-numeric characters are rejected in number mode
+- **WHEN** the user, in number mode, attempts to enter a non-numeric character
+- **THEN** that character is not accepted into the search query
+
+#### Scenario: The input communicates the active search mode to assistive technology
+- **WHEN** a user relying on assistive technology focuses the search input
+- **THEN** the announced label reflects the currently active search mode

@@ -9,3 +9,10 @@ export interface PokemonListResponseDTO {
   previous: string | null;
   results: NamedAPIResourceDTO[];
 }
+
+export interface PokemonTypeResponseDTO {
+  pokemon: Array<{
+    pokemon: NamedAPIResourceDTO;
+    slot: number;
+  }>;
+}

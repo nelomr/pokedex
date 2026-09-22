@@ -47,6 +47,10 @@ The modal SHALL render distinct loading, error, and loaded states, and an error 
 - **WHEN** the modal opens and the detail request has not yet resolved
 - **THEN** the modal renders a loading state rather than empty or partial detail content
 
+#### Scenario: Cached detail skips the loading state entirely
+- **WHEN** the modal opens for a Pokémon whose detail is already cached
+- **THEN** the loaded state renders immediately and no loading state is shown
+
 #### Scenario: Failure renders a typed error with retry
 - **WHEN** the detail request fails with a `NotFoundError`, `RateLimitError`, or `NetworkError`
 - **THEN** the modal renders an error state whose message corresponds to that failure class and exposes a retry action
@@ -58,6 +62,29 @@ The modal SHALL render distinct loading, error, and loaded states, and an error 
 #### Scenario: A failed detail request does not affect the catalog
 - **WHEN** a detail request fails
 - **THEN** the catalog list status and error remain unchanged and the catalog stays browsable after the modal is closed
+
+### Requirement: Loading skeleton
+While a detail request is in flight the modal SHALL render a content-shaped skeleton placeholder whose layout mirrors the loaded detail — artwork, title, type badges, and stat rows — so that the modal's dimensions do not change when the real content replaces it. The skeleton SHALL be marked `aria-busy="true"` and SHALL NOT expose its placeholder blocks as readable content to assistive technology.
+
+#### Scenario: Skeleton replaces a generic loading indicator
+- **WHEN** the modal is in its loading state
+- **THEN** the skeleton placeholder is rendered in place of the detail content, with placeholder blocks for the artwork, the title, the type badges, and each stat row
+
+#### Scenario: Layout does not shift when data arrives
+- **WHEN** the detail request resolves and the loaded content replaces the skeleton
+- **THEN** the modal surface's dimensions are unchanged from those it had while the skeleton was displayed
+
+#### Scenario: Skeleton is announced as busy, not as content
+- **WHEN** the skeleton is rendered
+- **THEN** its container carries `aria-busy="true"` and its placeholder blocks are hidden from assistive technology
+
+#### Scenario: Skeleton is removed on failure
+- **WHEN** the detail request fails
+- **THEN** the skeleton is removed and the error state with its retry action is rendered in its place
+
+#### Scenario: Reduced motion suppresses the shimmer
+- **WHEN** the user's system requests reduced motion
+- **THEN** the skeleton renders as static placeholder blocks with no shimmer animation
 
 ### Requirement: WAI-ARIA dialog semantics
 The modal SHALL implement the WAI-ARIA dialog pattern: `role="dialog"`, `aria-modal="true"`, and an accessible name provided through `aria-labelledby` referencing the modal title.

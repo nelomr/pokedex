@@ -154,4 +154,221 @@ describe("pokemonList.store", () => {
       expect(store.error).toBe(err);
     },
   );
+
+  function makeTypeResponse(ids: number[]) {
+    return {
+      pokemon: ids.map((id) => ({
+        pokemon: {
+          name: `pokemon-${id}`,
+          url: `https://pokeapi.co/api/v2/pokemon/${id}/`,
+        },
+      })),
+    };
+  }
+
+  describe("filteredList: name search and type filter", () => {
+    async function setupStore() {
+      vi.mocked(httpGet).mockResolvedValueOnce({ results: makeIndex(45) });
+      const store = usePokemonListStore();
+      await store.initCatalog();
+      return store;
+    }
+
+    it("narrows by case-insensitive partial name match", async () => {
+      const store = await setupStore();
+      store.setSearchQuery("Pokemon-1");
+
+      expect(
+        store.filteredList.every((item) => item.name.includes("pokemon-1")),
+      ).toBe(true);
+      expect(store.filteredList.length).toBeGreaterThan(0);
+      expect(store.filteredList.length).toBeLessThan(45);
+    });
+
+    it("narrows by selectedType membership once typeIndex is loaded", async () => {
+      const store = await setupStore();
+      vi.mocked(httpGet).mockResolvedValueOnce(makeTypeResponse([1, 2, 3]));
+
+      await store.setTypeFilter("grass");
+
+      expect(store.filteredList).toHaveLength(3);
+      expect(store.filteredList.map((i) => i.name).sort()).toEqual([
+        "pokemon-1",
+        "pokemon-2",
+        "pokemon-3",
+      ]);
+    });
+
+    it("combines search query and selected type with AND", async () => {
+      const store = await setupStore();
+      vi.mocked(httpGet).mockResolvedValueOnce(
+        makeTypeResponse([1, 2, 3, 10, 11]),
+      );
+      await store.setTypeFilter("grass");
+      store.setSearchQuery("pokemon-1");
+
+      expect(store.filteredList.map((i) => i.name).sort()).toEqual([
+        "pokemon-1",
+        "pokemon-10",
+        "pokemon-11",
+      ]);
+    });
+
+    it("setSearchQuery resets currentPage to 1", async () => {
+      const store = await setupStore();
+      store.goToPage(2);
+      store.setSearchQuery("pokemon");
+
+      expect(store.currentPage).toBe(1);
+    });
+
+    it("setTypeFilter resets currentPage to 1", async () => {
+      const store = await setupStore();
+      vi.mocked(httpGet).mockResolvedValueOnce(makeTypeResponse([1, 2, 3]));
+      store.goToPage(2);
+      await store.setTypeFilter("grass");
+
+      expect(store.currentPage).toBe(1);
+    });
+
+    it("derives totalPages/paginatedItems from filteredList rather than rawCatalogIndex", async () => {
+      const store = await setupStore();
+      store.setSearchQuery("pokemon-1");
+
+      expect(store.totalPages).toBe(
+        Math.ceil(store.filteredList.length / store.pageSize),
+      );
+      expect(store.paginatedItems.length).toBe(
+        Math.min(store.pageSize, store.filteredList.length),
+      );
+    });
+
+    it("issues exactly one HTTP call for a selected type", async () => {
+      const store = await setupStore();
+      vi.mocked(httpGet).mockResolvedValueOnce(makeTypeResponse([1, 2]));
+      const callsBefore = vi.mocked(httpGet).mock.calls.length;
+
+      await store.setTypeFilter("grass");
+
+      expect(vi.mocked(httpGet).mock.calls.length - callsBefore).toBe(1);
+    });
+
+    it("issues no additional call when re-selecting the same type", async () => {
+      const store = await setupStore();
+      vi.mocked(httpGet).mockResolvedValueOnce(makeTypeResponse([1, 2]));
+      await store.setTypeFilter("grass");
+      const callsBefore = vi.mocked(httpGet).mock.calls.length;
+
+      await store.setTypeFilter("grass");
+
+      expect(vi.mocked(httpGet).mock.calls.length).toBe(callsBefore);
+    });
+
+    it("restores the full set when the selected type is cleared", async () => {
+      const store = await setupStore();
+      vi.mocked(httpGet).mockResolvedValueOnce(makeTypeResponse([1, 2]));
+      await store.setTypeFilter("grass");
+      await store.setTypeFilter(null);
+
+      expect(store.filteredList).toHaveLength(45);
+    });
+
+    it("leaves catalog status at 'success' and sets a filter-scoped error on a rejected type fetch", async () => {
+      const store = await setupStore();
+      vi.mocked(httpGet).mockRejectedValueOnce(new NetworkError());
+
+      await store.setTypeFilter("grass");
+
+      expect(store.status).toBe("success");
+      expect(store.typeFilterError).not.toBeNull();
+    });
+  });
+
+  describe("searchMode: exact ID matching", () => {
+    async function setupStoreWithNullId() {
+      const results = makeIndex(45);
+      results.push({
+        name: "unresolvable",
+        url: "https://pokeapi.co/api/v2/pokemon/not-a-number/",
+      });
+      vi.mocked(httpGet).mockResolvedValueOnce({ results });
+      const store = usePokemonListStore();
+      await store.initCatalog();
+      return store;
+    }
+
+    it("defaults searchMode to 'name'", async () => {
+      const store = await setupStoreWithNullId();
+      expect(store.searchMode).toBe("name");
+    });
+
+    it("setSearchMode clears the current query and resets currentPage to 1", async () => {
+      const store = await setupStoreWithNullId();
+      store.setSearchQuery("pokemon");
+      store.goToPage(2);
+      expect(store.currentPage).toBe(2);
+
+      store.setSearchMode("id");
+
+      expect(store.searchQuery).toBe("");
+      expect(store.currentPage).toBe(1);
+    });
+
+    it("returns exactly one entry for an exact-ID query in id mode", async () => {
+      const store = await setupStoreWithNullId();
+      store.setSearchMode("id");
+      store.setSearchQuery("3");
+
+      expect(store.filteredList).toHaveLength(1);
+      expect(store.filteredList[0]?.name).toBe("pokemon-3");
+    });
+
+    it("returns no entries for a non-matching numeral in id mode", async () => {
+      const store = await setupStoreWithNullId();
+      store.setSearchMode("id");
+      store.setSearchQuery("999");
+
+      expect(store.filteredList).toHaveLength(0);
+    });
+
+    it("excludes entries whose number merely starts with the entered digits", async () => {
+      const store = await setupStoreWithNullId();
+      store.setSearchMode("id");
+      store.setSearchQuery("1");
+
+      expect(store.filteredList).toHaveLength(1);
+      expect(store.filteredList[0]?.name).toBe("pokemon-1");
+      expect(store.filteredList.map((i) => i.name)).not.toContain("pokemon-10");
+    });
+
+    it("still finds an entry with an unresolvable ID when searching by name", async () => {
+      const store = await setupStoreWithNullId();
+      store.setSearchMode("name");
+      store.setSearchQuery("unresolvable");
+
+      expect(store.filteredList).toHaveLength(1);
+      expect(store.filteredList[0]?.name).toBe("unresolvable");
+    });
+
+    it("excludes entries with a null extracted ID from id-mode matching, never coerced to 0", async () => {
+      const store = await setupStoreWithNullId();
+      store.setSearchMode("id");
+      store.setSearchQuery("0");
+
+      expect(store.filteredList).toHaveLength(0);
+    });
+
+    it("produces different filteredList results for the same query string depending on mode", async () => {
+      const store = await setupStoreWithNullId();
+      store.setSearchMode("id");
+      store.setSearchQuery("1");
+      const idModeResult = store.filteredList.map((i) => i.name);
+
+      store.setSearchMode("name");
+      store.setSearchQuery("1");
+      const nameModeResult = store.filteredList.map((i) => i.name);
+
+      expect(idModeResult).not.toEqual(nameModeResult);
+    });
+  });
 });

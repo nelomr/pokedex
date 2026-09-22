@@ -113,6 +113,33 @@ describe("App", () => {
     expect(httpGet).toHaveBeenCalledTimes(2);
     expect(wrapper.find('[data-testid="catalog-empty"]').exists()).toBe(true);
   });
+
+  it("shows a distinct no-results state when filters exclude every entry", async () => {
+    vi.useFakeTimers();
+    vi.mocked(httpGet).mockResolvedValue({
+      results: [
+        { name: "bulbasaur", url: "https://pokeapi.co/api/v2/pokemon/1/" },
+      ],
+    });
+    const wrapper = mount(App);
+    await flushAsync();
+
+    await wrapper
+      .get("[data-testid='search-input']")
+      .setValue("nonexistent-pokemon-xyz");
+    vi.advanceTimersByTime(300);
+    await flushAsync();
+
+    expect(wrapper.find('[data-testid="catalog-no-results"]').exists()).toBe(
+      true,
+    );
+    expect(wrapper.find('[data-testid="catalog-empty"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="catalog-loading"]').exists()).toBe(
+      false,
+    );
+    expect(wrapper.find('[data-testid="catalog-error"]').exists()).toBe(false);
+    vi.useRealTimers();
+  });
 });
 
 async function flushAsync(): Promise<void> {

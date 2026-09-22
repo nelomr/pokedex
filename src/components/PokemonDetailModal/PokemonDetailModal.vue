@@ -5,6 +5,7 @@ import {
   POKEMON_STAT_COUNT,
   type PokemonDetail,
 } from "../../domain/pokemon.types";
+import { typeBadgeClasses } from "../../domain/typeColors";
 import { ROUTE_NAMES } from "../../router/routeNames";
 import { normalizeDetailKey } from "../../services/detailRouteKey";
 import { usePokemonDetailStore } from "../../stores/pokemonDetail.store";
@@ -159,7 +160,9 @@ function retry(): void {
         <span
           v-for="type in detail.types"
           :key="type"
-          class="rounded-full bg-slate-700 px-3 py-1 text-xs capitalize"
+          data-testid="detail-type-badge"
+          class="rounded-full px-3 py-1 text-xs capitalize"
+          :class="typeBadgeClasses(type)"
         >
           {{ type }}
         </span>

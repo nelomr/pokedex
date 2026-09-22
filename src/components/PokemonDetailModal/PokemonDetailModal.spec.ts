@@ -5,6 +5,10 @@ import { createMemoryHistory, createRouter, type Router } from "vue-router";
 import { httpGet } from "../../api/httpClient";
 import placeholderSrc from "../../assets/pokemon-placeholder.svg";
 import { NotFoundError } from "../../domain/errors";
+import {
+  NEUTRAL_BADGE_CLASSES,
+  typeBadgeClasses,
+} from "../../domain/typeColors";
 import { routes } from "../../router";
 import { usePokemonDetailStore } from "../../stores/pokemonDetail.store";
 import PokemonDetailModal from "./PokemonDetailModal.vue";
@@ -35,6 +39,16 @@ function makeDetailDto() {
       { base_stat: 45, effort: 0, stat: { name: "speed", url: "" } },
     ],
     sprites: { front_default: null },
+  };
+}
+
+function makeDetailDtoWithTypes(typeNames: string[]) {
+  return {
+    ...makeDetailDto(),
+    types: typeNames.map((name, index) => ({
+      slot: index + 1,
+      type: { name, url: "" },
+    })),
   };
 }
 
@@ -157,6 +171,46 @@ describe("PokemonDetailModal", () => {
     expect(
       wrapper.find("[data-testid='detail-artwork']").attributes("src"),
     ).toBe(placeholderSrc);
+    wrapper.unmount();
+  });
+
+  it("colours each type badge with its own type's treatment", async () => {
+    vi.mocked(httpGet).mockResolvedValueOnce(
+      makeDetailDtoWithTypes(["grass", "poison"]),
+    );
+    const wrapper = mountModal();
+    await flushPromises();
+
+    const badges = wrapper.findAll("[data-testid='detail-type-badge']");
+    expect(badges).toHaveLength(2);
+    expect(badges[0].classes().join(" ")).toContain(typeBadgeClasses("grass"));
+    expect(badges[1].classes().join(" ")).toContain(typeBadgeClasses("poison"));
+    expect(badges[0].classes()).not.toEqual(badges[1].classes());
+    wrapper.unmount();
+  });
+
+  it("keeps the type name visible alongside its colour", async () => {
+    vi.mocked(httpGet).mockResolvedValueOnce(
+      makeDetailDtoWithTypes(["ground"]),
+    );
+    const wrapper = mountModal();
+    await flushPromises();
+
+    const badge = wrapper.find("[data-testid='detail-type-badge']");
+    expect(badge.text()).toBe("ground");
+    wrapper.unmount();
+  });
+
+  it("renders an unknown type neutrally without failing", async () => {
+    vi.mocked(httpGet).mockResolvedValueOnce(
+      makeDetailDtoWithTypes(["mystery"]),
+    );
+    const wrapper = mountModal();
+    await flushPromises();
+
+    const badge = wrapper.find("[data-testid='detail-type-badge']");
+    expect(badge.text()).toBe("mystery");
+    expect(badge.classes().join(" ")).toContain(NEUTRAL_BADGE_CLASSES);
     wrapper.unmount();
   });
 });

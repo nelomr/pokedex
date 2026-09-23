@@ -103,7 +103,7 @@ onMounted(() => {
         Pokedex
       </h1>
 
-      <div class="flex flex-wrap items-start gap-4 p-4">
+      <div class="flex flex-wrap items-end gap-4 p-4">
         <SearchBar
           :search-mode="store.searchMode"
           @update:query="handleQueryChange"
